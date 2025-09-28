@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "aluno_id": 1,
+    "turma_id": 1,
+    "professor_id": 1,
+    "disciplina": "Matemática",
+    "tipo_avaliacao": "Prova",
+    "valor": 8.5,
+    "valor_maximo": 10.0,
+    "data_avaliacao": "2024-03-15",
+    "descricao": "Prova de equações do 1º grau",
+    "observacoes": "Boa compreensão dos conceitos",
+    "created_at": "2024-03-15T10:00:00.000Z",
+    "updated_at": "2024-03-15T10:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "aluno_id": 2,
+    "turma_id": 1,
+    "professor_id": 1,
+    "disciplina": "Matemática",
+    "tipo_avaliacao": "Prova",
+    "valor": 9.0,
+    "valor_maximo": 10.0,
+    "data_avaliacao": "2024-03-15",
+    "descricao": "Prova de equações do 1º grau",
+    "observacoes": "Excelente desempenho",
+    "created_at": "2024-03-15T10:00:00.000Z",
+    "updated_at": "2024-03-15T10:00:00.000Z"
+  },
+  {
+    "id": 3,
+    "aluno_id": 1,
+    "turma_id": 1,
+    "professor_id": 1,
+    "disciplina": "Matemática",
+    "tipo_avaliacao": "Trabalho",
+    "valor": 7.5,
+    "valor_maximo": 10.0,
+    "data_avaliacao": "2024-03-18",
+    "descricao": "Trabalho sobre geometria",
+    "observacoes": "Entrega no prazo, pode melhorar na apresentação",
+    "created_at": "2024-03-18T14:00:00.000Z",
+    "updated_at": "2024-03-18T14:00:00.000Z"
+  },
+  {
+    "id": 4,
+    "aluno_id": 2,
+    "turma_id": 1,
+    "professor_id": 1,
+    "disciplina": "Matemática",
+    "tipo_avaliacao": "Trabalho",
+    "valor": 9.5,
+    "valor_maximo": 10.0,
+    "data_avaliacao": "2024-03-18",
+    "descricao": "Trabalho sobre geometria",
+    "observacoes": "Trabalho exemplar, muito bem estruturado",
+    "created_at": "2024-03-18T14:00:00.000Z",
+    "updated_at": "2024-03-18T14:00:00.000Z"
+  }
+]

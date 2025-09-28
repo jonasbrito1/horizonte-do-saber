@@ -1,0 +1,60 @@
+RewriteEngine On
+
+# Permitir acesso direto a arquivos
+Options +FollowSymLinks
+DirectoryIndex index.html
+
+# Headers de segurança básicos
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+</IfModule>
+
+# API Routes para conteúdo dinâmico
+RewriteRule ^api/content/public/?$ api/content.php [L,QSA]
+RewriteRule ^api/content/upload/?$ api/upload.php [L,QSA]
+RewriteRule ^api/content/?$ api/content.php [L,QSA]
+
+# Assets estáticos - deixar passar diretamente
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^assets/ - [L]
+
+# Uploads - deixar passar diretamente
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^uploads/ - [L]
+
+# Imagens - deixar passar diretamente
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^images/ - [L]
+
+# Para SPA React - apenas se o arquivo não existir
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteRule ^(.*)$ index.html [L,QSA]
+
+# MIME types para assets
+<IfModule mod_mime.c>
+    AddType application/javascript .js
+    AddType text/css .css
+    AddType image/jpeg .jpg .jpeg
+    AddType image/png .png
+    AddType image/gif .gif
+    AddType image/svg+xml .svg
+</IfModule>
+
+# Compressão
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE application/json
+</IfModule>
+
+# Cache para assets estáticos
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType image/* "access plus 1 month"
+</IfModule>

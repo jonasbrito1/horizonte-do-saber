@@ -1,0 +1,46 @@
+[
+  {
+    "id": 1,
+    "aluno_id": 1,
+    "turma_id": 1,
+    "professor_id": 1,
+    "data": "2024-03-20",
+    "presente": true,
+    "observacoes": "Participou ativamente da aula",
+    "created_at": "2024-03-20T08:00:00.000Z",
+    "updated_at": "2024-03-20T08:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "aluno_id": 2,
+    "turma_id": 1,
+    "professor_id": 1,
+    "data": "2024-03-20",
+    "presente": true,
+    "observacoes": "",
+    "created_at": "2024-03-20T08:00:00.000Z",
+    "updated_at": "2024-03-20T08:00:00.000Z"
+  },
+  {
+    "id": 3,
+    "aluno_id": 1,
+    "turma_id": 1,
+    "professor_id": 1,
+    "data": "2024-03-21",
+    "presente": false,
+    "observacoes": "Faltou por motivo de saúde",
+    "created_at": "2024-03-21T08:00:00.000Z",
+    "updated_at": "2024-03-21T08:00:00.000Z"
+  },
+  {
+    "id": 4,
+    "aluno_id": 2,
+    "turma_id": 1,
+    "professor_id": 1,
+    "data": "2024-03-21",
+    "presente": true,
+    "observacoes": "Excelente desempenho na atividade",
+    "created_at": "2024-03-21T08:00:00.000Z",
+    "updated_at": "2024-03-21T08:00:00.000Z"
+  }
+]

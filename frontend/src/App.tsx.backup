@@ -1,0 +1,111 @@
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuth } from './context/AuthContext'
+
+// Layouts
+import MainLayout from './layouts/MainLayout'
+import AuthLayout from './layouts/AuthLayout'
+import DashboardLayout from './layouts/DashboardLayout'
+
+// Pages
+import HomePage from './pages/HomePage'
+import LoginPage from './pages/auth/LoginPage'
+import RegisterPage from './pages/auth/RegisterPage'
+import DashboardPage from './pages/dashboard/DashboardPage'
+import StudentsPage from './pages/students/StudentsPage'
+import TeachersPage from './pages/teachers/TeachersPage'
+import ClassesPage from './pages/classes/ClassesPage'
+import ActivitiesPage from './pages/activities/ActivitiesPage'
+import ContentManagerPage from './pages/content/ContentManagerPage'
+import SettingsPage from './pages/settings/SettingsPage'
+import ProfilePage from './pages/profile/ProfilePage'
+
+// Protected Route Component
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth()
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
+      </div>
+    )
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+  
+  return <>{children}</>
+}
+
+// Public Route Component (redirect if authenticated)
+const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth()
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
+      </div>
+    )
+  }
+  
+  if (user) {
+    return <Navigate to="/dashboard" replace />
+  }
+  
+  return <>{children}</>
+}
+
+function App() {
+  return (
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<MainLayout />}>
+        <Route index element={<HomePage />} />
+      </Route>
+      
+      {/* Auth Routes */}
+      <Route path="/login" element={<LoginPage />} />
+
+      <Route path="/register" element={
+        <PublicRoute>
+          <AuthLayout>
+            <RegisterPage />
+          </AuthLayout>
+        </PublicRoute>
+      } />
+      
+      {/* Protected Dashboard Routes */}
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <DashboardLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<DashboardPage />} />
+        <Route path="students" element={<StudentsPage />} />
+        <Route path="teachers" element={<TeachersPage />} />
+        <Route path="classes" element={<ClassesPage />} />
+        <Route path="activities" element={<ActivitiesPage />} />
+        <Route path="content" element={<ContentManagerPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route path="profile" element={<ProfilePage />} />
+      </Route>
+      
+      {/* Catch all route */}
+      <Route path="*" element={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
+            <p className="text-gray-600 mb-8">Página não encontrada</p>
+            <a href="/" className="btn btn-primary">
+              Voltar ao Início
+            </a>
+          </div>
+        </div>
+      } />
+    </Routes>
+  )
+}
+
+export default App

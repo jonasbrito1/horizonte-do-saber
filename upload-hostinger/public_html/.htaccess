@@ -1,0 +1,13 @@
+DirectoryIndex index.html
+
+# API Routes
+RewriteEngine On
+RewriteRule ^api/content/public/?$ api/content.php [L]
+RewriteRule ^api/content/upload/?$ api/upload.php [L]
+RewriteRule ^api/content/?$ api/content.php [L]
+
+# React SPA - redirect to index.html for all non-existing files
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteRule . index.html [L]

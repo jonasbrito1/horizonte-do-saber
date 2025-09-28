@@ -1,0 +1,8 @@
+# Deny direct access to data files
+Order Deny,Allow
+Deny from all
+
+# But allow access from localhost/same server
+<RequireAll>
+    Require local
+</RequireAll>

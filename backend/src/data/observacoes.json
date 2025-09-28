@@ -1,0 +1,54 @@
+[
+  {
+    "id": 1,
+    "aluno_id": 1,
+    "turma_id": 1,
+    "professor_id": 1,
+    "tipo": "comportamento",
+    "titulo": "Participação em sala",
+    "descricao": "João tem demonstrado grande interesse nas aulas de matemática. Sempre participa das discussões e faz perguntas relevantes. É um aluno dedicado e responsável.",
+    "data": "2024-03-20",
+    "visivel_responsavel": true,
+    "created_at": "2024-03-20T15:30:00.000Z",
+    "updated_at": "2024-03-20T15:30:00.000Z"
+  },
+  {
+    "id": 2,
+    "aluno_id": 2,
+    "turma_id": 1,
+    "professor_id": 1,
+    "tipo": "academico",
+    "titulo": "Desempenho em avaliações",
+    "descricao": "Maria tem obtido excelentes resultados nas avaliações. Demonstra domínio dos conteúdos e capacidade de aplicar os conhecimentos em situações práticas.",
+    "data": "2024-03-18",
+    "visivel_responsavel": true,
+    "created_at": "2024-03-18T16:00:00.000Z",
+    "updated_at": "2024-03-18T16:00:00.000Z"
+  },
+  {
+    "id": 3,
+    "aluno_id": 1,
+    "turma_id": 1,
+    "professor_id": 1,
+    "tipo": "comportamento",
+    "titulo": "Trabalho em equipe",
+    "descricao": "Durante a atividade em grupo, João demonstrou liderança positiva e colaborou efetivamente com os colegas.",
+    "data": "2024-03-19",
+    "visivel_responsavel": true,
+    "created_at": "2024-03-19T11:15:00.000Z",
+    "updated_at": "2024-03-19T11:15:00.000Z"
+  },
+  {
+    "id": 4,
+    "aluno_id": 2,
+    "turma_id": 1,
+    "professor_id": 1,
+    "tipo": "academico",
+    "titulo": "Necessidade de reforço",
+    "descricao": "Sugiro que Maria pratique mais exercícios de geometria espacial para consolidar o aprendizado.",
+    "data": "2024-03-21",
+    "visivel_responsavel": false,
+    "created_at": "2024-03-21T13:45:00.000Z",
+    "updated_at": "2024-03-21T13:45:00.000Z"
+  }
+]

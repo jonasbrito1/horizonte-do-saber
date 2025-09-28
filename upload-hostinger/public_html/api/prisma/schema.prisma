@@ -1,0 +1,454 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Users table - Sistema de usuários
+model Usuario {
+  id                Int       @id @default(autoincrement())
+  nome              String
+  email             String    @unique
+  senha             String
+  telefone          String?
+  endereco          String?
+  data_nascimento   DateTime?
+  foto              String?
+  tipo              String    @default("admin") // admin, professor, responsavel
+  status            String    @default("ativo") // ativo, inativo, suspenso
+  primeiro_login    Boolean   @default(true)
+  ultimo_login      DateTime?
+  token_reset_senha String?
+  reset_senha_exp   DateTime?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  // Relações
+  refresh_tokens RefreshToken[]
+  alunos_criados Aluno[]       @relation("UsuarioCriouAluno")
+  sessions       UserSession[]
+
+  @@map("usuarios")
+}
+
+// Refresh tokens para JWT
+model RefreshToken {
+  id         Int      @id @default(autoincrement())
+  token      String   @unique 
+  usuario_id Int
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  // Relações
+  usuario Usuario @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// Students table - Alunos
+model Aluno {
+  id                     Int       @id @default(autoincrement())
+  nome                   String    
+  email                  String?   @unique 
+  data_nascimento        DateTime  
+  cpf                    String?   @unique 
+  rg                     String?   
+  telefone               String?   
+  endereco               String?   
+  foto                   String?   
+  status                 String    @default("ativo")  // ativo, inativo, transferido
+  data_matricula         DateTime  @default(now())
+  numero_matricula       String?   @unique 
+
+  // Informações médicas
+  tipo_sanguineo         String?   
+  alergias               String?   
+  medicamentos           String?   
+  contato_emergencia     String?   
+  telefone_emergencia    String?   
+
+  // Informações acadêmicas
+  serie_atual            String?   
+  turno                  String?    // manha, tarde, noite
+  observacoes            String?   
+
+  created_by             Int?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  // Relações
+  criado_por    Usuario?            @relation("UsuarioCriouAluno", fields: [created_by], references: [id])
+  responsaveis  ResponsavelAluno[]
+  turmas        AlunoTurma[]
+  notas         Nota[]
+  mensalidades  Mensalidade[]
+
+  @@map("alunos")
+}
+
+// Teachers table - Professores
+model Professor {
+  id                    Int       @id @default(autoincrement())
+  nome                  String    
+  email                 String    @unique 
+  telefone              String?   
+  endereco              String?   
+  data_nascimento       DateTime? 
+  cpf                   String?   @unique 
+  rg                    String?   
+  foto                  String?   
+
+  // Informações profissionais
+  formacao              String?   
+  especializacao        String?   
+  registro_profissional String?   
+  data_admissao         DateTime  @default(now())
+  salario               Decimal?
+
+  status                String    @default("ativo")  // ativo, inativo, licenca
+  observacoes           String?   
+
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  // Relações
+  disciplinas ProfessorDisciplina[]
+  turmas      ProfessorTurma[]
+  turmas_responsavel Turma[]     @relation("ProfessorResponsavel")
+
+  @@map("professores")
+}
+
+// Responsáveis (pais/tutores)
+model Responsavel {
+  id               Int       @id @default(autoincrement())
+  nome             String    
+  email            String?   @unique 
+  telefone         String?   
+  endereco         String?   
+  cpf              String?   @unique 
+  rg               String?   
+  profissao        String?   
+  parentesco       String?    // pai, mae, avo, tutor, etc
+  observacoes      String?   
+
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  // Relações
+  alunos ResponsavelAluno[]
+
+  @@map("responsaveis")
+}
+
+// Relação entre responsáveis e alunos (muitos para muitos)
+model ResponsavelAluno {
+  responsavel_id Int
+  aluno_id       Int
+  tipo_relacao   String?  // responsavel_financeiro, contato_emergencia, etc
+  created_at     DateTime @default(now())
+
+  // Relações
+  responsavel Responsavel @relation(fields: [responsavel_id], references: [id], onDelete: Cascade)
+  aluno       Aluno       @relation(fields: [aluno_id], references: [id], onDelete: Cascade)
+
+  @@id([responsavel_id, aluno_id])
+  @@map("responsavel_aluno")
+}
+
+// Classes/Turmas
+model Turma {
+  id                      Int       @id @default(autoincrement())
+  nome                    String    
+  nivel                   String     // Fundamental I, Fundamental II, Médio, etc
+  serie                   String     // 1º ano, 2º ano, etc
+  turno                   String     // manha, tarde, noite
+  ano_letivo              String    
+  capacidade_maxima       Int       @default(30)
+  professor_responsavel_id Int?
+  status                  String    @default("ativo")  // ativo, inativo, concluido
+  observacoes             String?   
+
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+
+  // Relações
+  professor_responsavel Professor?         @relation("ProfessorResponsavel", fields: [professor_responsavel_id], references: [id])
+  alunos               AlunoTurma[]
+  disciplinas          TurmaDisciplina[]
+  professores          ProfessorTurma[]
+  notas                Nota[]
+
+  @@map("turmas")
+}
+
+// Relação entre alunos e turmas (muitos para muitos)
+model AlunoTurma {
+  aluno_id       Int
+  turma_id       Int
+  data_matricula DateTime @default(now())
+  data_saida     DateTime?
+  status         String   @default("ativo")  // ativo, transferido, evadido
+
+  // Relações
+  aluno Aluno @relation(fields: [aluno_id], references: [id], onDelete: Cascade)
+  turma Turma @relation(fields: [turma_id], references: [id], onDelete: Cascade)
+
+  @@id([aluno_id, turma_id])
+  @@map("aluno_turma")
+}
+
+// Disciplines - Disciplinas
+model Disciplina {
+  id             Int       @id @default(autoincrement())
+  nome           String    
+  codigo         String?   @unique 
+  descricao      String?   
+  carga_horaria  Int?      // horas por semana
+  status         String    @default("ativo") 
+
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  // Relações
+  professores ProfessorDisciplina[]
+  turmas      TurmaDisciplina[]
+  notas       Nota[]
+
+  @@map("disciplinas")
+}
+
+// Relação entre professores e disciplinas (muitos para muitos)
+model ProfessorDisciplina {
+  professor_id  Int
+  disciplina_id Int
+  created_at    DateTime @default(now())
+
+  // Relações
+  professor  Professor  @relation(fields: [professor_id], references: [id], onDelete: Cascade)
+  disciplina Disciplina @relation(fields: [disciplina_id], references: [id], onDelete: Cascade)
+
+  @@id([professor_id, disciplina_id])
+  @@map("professor_disciplina")
+}
+
+// Relação entre turmas e disciplinas (muitos para muitos)
+model TurmaDisciplina {
+  turma_id      Int
+  disciplina_id Int
+  created_at    DateTime @default(now())
+
+  // Relações
+  turma      Turma      @relation(fields: [turma_id], references: [id], onDelete: Cascade)
+  disciplina Disciplina @relation(fields: [disciplina_id], references: [id], onDelete: Cascade)
+
+  @@id([turma_id, disciplina_id])
+  @@map("turma_disciplina")
+}
+
+// Relação entre professores e turmas (muitos para muitos)
+model ProfessorTurma {
+  professor_id Int
+  turma_id     Int
+  created_at   DateTime @default(now())
+
+  // Relações
+  professor Professor @relation(fields: [professor_id], references: [id], onDelete: Cascade)
+  turma     Turma     @relation(fields: [turma_id], references: [id], onDelete: Cascade)
+
+  @@id([professor_id, turma_id])
+  @@map("professor_turma")
+}
+
+// Grades/Notas
+model Nota {
+  id            Int       @id @default(autoincrement())
+  aluno_id      Int
+  turma_id      Int
+  disciplina_id Int
+  professor_id  Int?
+
+  // Notas por bimestre/trimestre
+  nota_1        Decimal?
+  nota_2        Decimal?
+  nota_3        Decimal?
+  nota_4        Decimal?
+  media_final   Decimal?
+
+  // Frequência
+  faltas        Int?      @default(0)
+  frequencia    Decimal? // porcentagem
+
+  periodo       String     // 1º Bimestre, 2º Bimestre, etc
+  ano_letivo    String    
+  observacoes   String?   
+
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  // Relações
+  aluno      Aluno       @relation(fields: [aluno_id], references: [id], onDelete: Cascade)
+  turma      Turma       @relation(fields: [turma_id], references: [id], onDelete: Cascade)
+  disciplina Disciplina  @relation(fields: [disciplina_id], references: [id], onDelete: Cascade)
+
+  @@map("notas")
+}
+
+// Financial - Mensalidades
+model Mensalidade {
+  id                Int       @id @default(autoincrement())
+  aluno_id          Int
+  valor             Decimal
+  mes_referencia    Int       // 1-12
+  ano_referencia    Int
+  data_vencimento   DateTime  
+  data_pagamento    DateTime? 
+  valor_pago        Decimal?
+  desconto          Decimal? @default(0)
+  multa             Decimal? @default(0)
+  juros             Decimal? @default(0)
+  status            String    @default("pendente")  // pendente, pago, vencido, cancelado
+  forma_pagamento   String?    // dinheiro, cartao, pix, boleto
+  observacoes       String?   
+
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  // Relações
+  aluno Aluno @relation(fields: [aluno_id], references: [id], onDelete: Cascade)
+
+  @@map("mensalidades")
+}
+
+// Activities - Atividades escolares
+model Atividade {
+  id             Int       @id @default(autoincrement())
+  titulo         String    
+  descricao      String    
+  data_atividade DateTime  
+  local          String?   
+  tipo           String?    // projeto, evento, excursao, etc
+  participantes  String?    // quais turmas/alunos participaram
+  status         String    @default("ativo") 
+
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  // Relações
+  fotos AtividadeFoto[]
+
+  @@map("atividades")
+}
+
+// Photos for activities
+model AtividadeFoto {
+  id           Int       @id @default(autoincrement())
+  atividade_id Int
+  url          String    
+  legenda      String?   
+  ordem        Int       @default(1)
+
+  created_at   DateTime  @default(now())
+
+  // Relações
+  atividade Atividade @relation(fields: [atividade_id], references: [id], onDelete: Cascade)
+
+  @@map("atividade_fotos")
+}
+
+// Site content management
+model SiteContent {
+  id         Int       @id @default(autoincrement())
+  secao      String    @unique  // hero, sobre, servicos, contato, etc
+  conteudo   Json      // JSON com todo o conteúdo da seção
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  @@map("site_content")
+}
+
+// System settings
+model Configuracao {
+  id         Int       @id @default(autoincrement())
+  chave      String    @unique
+  valor      Json      // JSON para armazenar qualquer tipo de configuração
+  descricao  String?
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  @@map("configuracoes")
+}
+
+// Email logs for tracking sent emails
+model EmailLog {
+  id              Int       @id @default(autoincrement())
+  destinatario    String
+  assunto         String
+  corpo           String    @db.Text
+  tipo            String    // boas_vindas, reset_senha, credenciais_acesso, notificacao
+  status          String    @default("pendente") // pendente, enviado, erro, cancelado
+  erro            String?   @db.Text
+  tentativas      Int       @default(0)
+  enviado_em      DateTime?
+
+  // Dados do usuário relacionado
+  usuario_id      Int?
+  usuario_email   String?
+  usuario_nome    String?
+
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  @@map("email_logs")
+}
+
+// User sessions for security tracking
+model UserSession {
+  id              String    @id @default(cuid())
+  usuario_id      Int
+  ip_address      String
+  user_agent      String?
+  device_info     String?
+  login_at        DateTime  @default(now())
+  logout_at       DateTime?
+  last_activity   DateTime  @default(now())
+  status          String    @default("ativo") // ativo, expirado, terminado
+
+  // Relações
+  usuario Usuario @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+// Password reset tokens
+model PasswordResetToken {
+  id          String    @id @default(cuid())
+  email       String
+  token       String    @unique
+  expires_at  DateTime
+  used_at     DateTime?
+  ip_address  String?
+  created_at  DateTime  @default(now())
+
+  @@map("password_reset_tokens")
+}
+
+// Email verification tokens
+model EmailVerificationToken {
+  id          String    @id @default(cuid())
+  email       String
+  token       String    @unique
+  expires_at  DateTime
+  verified_at DateTime?
+  created_at  DateTime  @default(now())
+
+  @@map("email_verification_tokens")
+}

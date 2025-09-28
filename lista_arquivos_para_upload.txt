@@ -1,0 +1,62 @@
+# 📤 LISTA DE ARQUIVOS PARA UPLOAD - CORREÇÃO COMPLETA
+
+## 🎯 ARQUIVOS CORRIGIDOS QUE DEVEM SER ENVIADOS PARA O SERVIDOR:
+
+### 1. 🔧 CONFIGURAÇÃO PRINCIPAL
+- ✅ config.php (NOVO - configuração unificada)
+- ✅ db.php (ATUALIZADO - usa config.php)
+
+### 2. 📄 ARQUIVOS COM CORREÇÕES DE SESSÃO
+- ✅ frequencia.php (user_role → user_nivel)
+- ✅ observacoes.php (user_role → user_nivel)
+- ✅ gerenciar_conteudo.php (usa config.php)
+- ✅ teste_imagens.php (usa config.php)
+
+### 3. 🧪 ARQUIVOS DE TESTE E VERIFICAÇÃO
+- ✅ teste_ambiente.php (NOVO - verifica configuração)
+- ✅ teste_final_servidor.php (NOVO - teste completo)
+- ✅ verificar_observacoes.php (NOVO - diagnóstico específico)
+- ✅ debug_fixo.php (NOVO - debug corrigido)
+
+### 4. 📋 DOCUMENTAÇÃO
+- ✅ CONFIGURACAO_AMBIENTE.md (NOVO - documentação completa)
+- ✅ fix_session_headers.php (NOVO - script de diagnóstico)
+
+## 🚨 PRIORIDADE ALTA (RESOLVER ERRO IMEDIATO):
+
+### OBSERVACOES.PHP CORRIGIDO:
+1. Substitua o conteúdo atual por:
+
+```php
+<?php
+session_start();
+require_once 'config.php'; // Nova configuração unificada
+require_once 'db.php';
+
+// Verificar autenticação (user_nivel em vez de user_role)
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_nivel']) ||
+    !in_array($_SESSION['user_nivel'], ['administrador', 'secretaria', 'professor'])) {
+    header('Location: login.php');
+    exit();
+}
+
+// Resto do código permanece igual...
+```
+
+## 🎯 APÓS O UPLOAD:
+
+1. ✅ Erro "Undefined array key 'user_role'" será resolvido
+2. ✅ Erro "headers already sent" será resolvido
+3. ✅ Sistema funcionará em ambos ambientes automaticamente
+4. ✅ Debug apropriado por ambiente (ativo em local, inativo em produção)
+
+## 🧪 PARA TESTAR:
+
+1. Upload dos arquivos corrigidos
+2. Acesse: https://app.horizontedosaber.com.br/teste_ambiente.php
+3. Acesse: https://app.horizontedosaber.com.br/observacoes.php
+4. Verifique se não há mais erros
+
+---
+
+💡 **DICA:** Faça backup dos arquivos atuais do servidor antes de substituir!

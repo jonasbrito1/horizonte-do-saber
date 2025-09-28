@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  database:
+    image: mysql:5.7
+    container_name: horizonte-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: horizonte123
+      MYSQL_DATABASE: horizontedosaber
+      MYSQL_USER: horizonte_user
+      MYSQL_PASSWORD: horizonte123
+    ports:
+      - "3310:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - horizonte-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: horizonte-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "mysql://horizonte_user:horizonte123@database:3306/horizontedosaber"
+      JWT_SECRET: "horizonte-super-secret-key-2024"
+      NODE_ENV: development
+      PORT: 3001
+    ports:
+      - "3002:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./uploads:/app/uploads
+    depends_on:
+      - database
+    networks:
+      - horizonte-network
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: horizonte-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:3002/api
+    ports:
+      - "5174:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - horizonte-network
+
+  # phpMyAdmin (opcional para gerenciar banco)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: horizonte-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: database
+      PMA_USER: root
+      PMA_PASSWORD: horizonte123
+    ports:
+      - "9001:80"
+    depends_on:
+      - database
+    networks:
+      - horizonte-network
+
+volumes:
+  mysql_data:
+
+networks:
+  horizonte-network:
+    driver: bridge
