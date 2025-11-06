@@ -18,7 +18,9 @@ import {
   UserCheck,
   AlertCircle,
   CheckCircle,
-  X
+  X,
+  Copy,
+  Key
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -53,6 +55,8 @@ const TeachersPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'todos' | 'ativo' | 'inativo' | 'afastado'>('todos')
   const [showModal, setShowModal] = useState(false)
   const [editingProfessor, setEditingProfessor] = useState<Professor | null>(null)
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false)
+  const [credentials, setCredentials] = useState<{ email: string; senha: string }>({ email: '', senha: '' })
   const [formData, setFormData] = useState<TeacherFormData>({
     nome: '',
     email: '',
@@ -76,7 +80,9 @@ const TeachersPage: React.FC = () => {
     'Arte',
     'Música',
     'Filosofia',
-    'Sociologia'
+    'Sociologia',
+    'Empreendedorismo',
+    'Ensino Religioso'
   ]
 
   useEffect(() => {
@@ -86,7 +92,7 @@ const TeachersPage: React.FC = () => {
   const loadProfessors = async () => {
     try {
       setLoading(true)
-      const response = await fetch('http://localhost:3008/api/professores')
+      const response = await fetch('http://localhost:4600/api/professores')
       const data = await response.json()
 
       if (data.success) {
@@ -108,8 +114,8 @@ const TeachersPage: React.FC = () => {
       }
 
       const url = editingProfessor
-        ? `http://localhost:3008/api/professores/${editingProfessor.id}`
-        : 'http://localhost:3008/api/professores'
+        ? `http://localhost:4600/api/professores/${editingProfessor.id}`
+        : 'http://localhost:4600/api/professores'
 
       const method = editingProfessor ? 'PUT' : 'POST'
 
@@ -124,10 +130,19 @@ const TeachersPage: React.FC = () => {
       const data = await response.json()
 
       if (data.success) {
-        toast.success(editingProfessor ? 'Professor atualizado com sucesso!' : 'Professor adicionado com sucesso!')
+        toast.success(data.message || 'Operação realizada com sucesso!')
         setShowModal(false)
         resetForm()
         loadProfessors()
+
+        // Se foi criado um novo professor e um usuário foi criado, mostrar credenciais
+        if (!editingProfessor && data.usuarioCriado && data.senhaGerada) {
+          setCredentials({
+            email: formData.email,
+            senha: data.senhaGerada
+          })
+          setShowCredentialsModal(true)
+        }
       } else {
         toast.error(data.message || 'Erro ao salvar professor')
       }
@@ -143,7 +158,7 @@ const TeachersPage: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3008/api/professores/${id}`, {
+      const response = await fetch(`http://localhost:4600/api/professores/${id}`, {
         method: 'DELETE'
       })
 
@@ -610,6 +625,93 @@ const TeachersPage: React.FC = () => {
                   {editingProfessor ? 'Atualizar' : 'Adicionar'} Professor
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Credenciais */}
+      <AnimatePresence>
+        {showCredentialsModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowCredentialsModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-xl p-8 w-full max-w-md"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Key className="w-8 h-8 text-green-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                  Usuário Criado com Sucesso!
+                </h3>
+                <p className="text-gray-600">
+                  As credenciais de acesso ao sistema foram geradas automaticamente.
+                </p>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <label className="block text-sm font-medium text-blue-900 mb-2">
+                    Email de Acesso
+                  </label>
+                  <div className="flex items-center justify-between bg-white rounded px-3 py-2 border border-blue-300">
+                    <span className="text-gray-900 font-mono text-sm">{credentials.email}</span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(credentials.email)
+                        toast.success('Email copiado!')
+                      }}
+                      className="text-blue-600 hover:text-blue-700 ml-2"
+                      title="Copiar email"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <label className="block text-sm font-medium text-green-900 mb-2">
+                    Senha Temporária
+                  </label>
+                  <div className="flex items-center justify-between bg-white rounded px-3 py-2 border border-green-300">
+                    <span className="text-gray-900 font-mono text-sm font-bold">{credentials.senha}</span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(credentials.senha)
+                        toast.success('Senha copiada!')
+                      }}
+                      className="text-green-600 hover:text-green-700 ml-2"
+                      title="Copiar senha"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-yellow-800">
+                  <strong>Importante:</strong> Guarde estas credenciais em local seguro.
+                  O professor deverá alterar a senha no primeiro acesso ao sistema.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowCredentialsModal(false)}
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+              >
+                Entendi
+              </button>
             </motion.div>
           </motion.div>
         )}

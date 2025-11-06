@@ -34,6 +34,28 @@ const LoginPage: React.FC = () => {
     try {
       setIsLoading(true)
       await login(data.email, data.password)
+
+      // Verificar se é primeiro acesso
+      const userStr = localStorage.getItem('user')
+      if (userStr) {
+        const userData = JSON.parse(userStr)
+        if (userData.primeiro_login === true) {
+          // Redirecionar para página de primeiro acesso
+          navigate('/first-access')
+          return
+        }
+
+        // Redirecionar baseado no tipo de usuário
+        if (userData.tipo === 'responsavel') {
+          navigate('/dashboard/responsavel-dashboard')
+          return
+        } else if (userData.tipo === 'professor') {
+          navigate('/dashboard/professor-dashboard')
+          return
+        }
+      }
+
+      // Login normal - redirecionar para dashboard padrão (admin)
       navigate('/dashboard')
     } catch (error: any) {
       console.error('Erro no login:', error)

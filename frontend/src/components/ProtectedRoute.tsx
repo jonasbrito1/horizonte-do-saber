@@ -6,12 +6,16 @@ import { AlertCircle, Loader2 } from 'lucide-react'
 interface ProtectedRouteProps {
   children: React.ReactNode
   requiredLevel?: 'administrador' | 'professor' | 'responsavel'
+  requiredType?: 'admin' | 'professor' | 'responsavel'
+  excludedTypes?: ('admin' | 'professor' | 'responsavel')[]
   requireAuth?: boolean
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requiredLevel,
+  requiredType,
+  excludedTypes,
   requireAuth = true
 }) => {
   const { user, isLoading } = useAuth()
@@ -34,25 +38,68 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  // Check if user has required access level
-  if (requiredLevel && user && user.nivel !== requiredLevel) {
+  // Check if user type is excluded from this route
+  if (excludedTypes && user && excludedTypes.includes(user.tipo as any)) {
+    // Redirect professors to their dashboard
+    if (user.tipo === 'professor') {
+      return <Navigate to="/dashboard/professor-dashboard" replace />
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h1>
           <p className="text-gray-600 mb-4">
-            VocÍ n„o tem permiss„o para acessar esta p·gina.
-            {requiredLevel === 'administrador' && ' Apenas administradores podem acessar esta ·rea.'}
-            {requiredLevel === 'professor' && ' Apenas professores podem acessar esta ·rea.'}
-            {requiredLevel === 'responsavel' && ' Apenas respons·veis podem acessar esta ·rea.'}
+            Voc√™ n√£o tem permiss√£o para acessar esta p√°gina.
+          </p>
+          <div className="mt-6">
+            <button
+              onClick={() => window.location.href = '/dashboard'}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              Ir para Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Check if user has required access level (support both requiredLevel and requiredType)
+  const hasAccess = () => {
+    if (!user) return false
+
+    if (requiredLevel) {
+      return user.nivel === requiredLevel
+    }
+
+    if (requiredType) {
+      return user.tipo === requiredType
+    }
+
+    return true
+  }
+
+  if ((requiredLevel || requiredType) && user && !hasAccess()) {
+    const required = requiredLevel || requiredType
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h1>
+          <p className="text-gray-600 mb-4">
+            Voc√™ n√£o tem permiss√£o para acessar esta p√°gina.
+            {(required === 'administrador' || required === 'admin') && ' Apenas administradores podem acessar esta √°rea.'}
+            {required === 'professor' && ' Apenas professores podem acessar esta √°rea.'}
+            {required === 'responsavel' && ' Apenas respons√°veis podem acessar esta √°rea.'}
           </p>
           <div className="space-y-2">
             <p className="text-sm text-gray-500">
-              Seu nÌvel de acesso: <span className="font-medium capitalize">{user?.nivel}</span>
+              Seu n√≠vel de acesso: <span className="font-medium capitalize">{user?.nivel || user?.tipo}</span>
             </p>
             <p className="text-sm text-gray-500">
-              NÌvel necess·rio: <span className="font-medium capitalize">{requiredLevel}</span>
+              N√≠vel necess√°rio: <span className="font-medium capitalize">{required}</span>
             </p>
           </div>
           <div className="mt-6 space-x-3">

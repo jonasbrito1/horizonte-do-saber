@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import userDbService from '../services/userDbService';
 
 const prisma = new PrismaClient();
 
@@ -39,16 +40,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
 
     // Verificar se usuário ainda existe e está ativo
-    const user = await prisma.usuario.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        email: true,
-        nome: true,
-        tipo: true,
-        status: true,
-      }
-    });
+    const user = await userDbService.findUserById(decoded.userId);
 
     if (!user) {
       return res.status(401).json({

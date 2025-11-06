@@ -26,6 +26,13 @@ interface CreateUserResponse {
   }
 }
 
+interface UpdateUserRequest {
+  nome: string
+  email: string
+  telefone?: string
+  tipo: 'admin' | 'professor' | 'responsavel'
+}
+
 interface User {
   id: number
   nome: string
@@ -112,6 +119,27 @@ class UserService {
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.message || 'Erro ao resetar senha')
+    }
+
+    const data = await response.json()
+    return data.data
+  }
+
+  async updateUser(userId: number, userData: UpdateUserRequest): Promise<User> {
+    const token = localStorage.getItem('token')
+
+    const response = await fetch(`${this.baseUrl}/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(userData)
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || 'Erro ao atualizar usuário')
     }
 
     const data = await response.json()

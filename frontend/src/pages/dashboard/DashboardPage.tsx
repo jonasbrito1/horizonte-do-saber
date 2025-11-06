@@ -66,8 +66,14 @@ const DashboardPage: React.FC = () => {
       try {
         setLoading(true)
 
+        const token = localStorage.getItem('token')
+
         // Fetch dashboard statistics
-        const response = await fetch('http://localhost:3008/api/dashboard/stats')
+        const response = await fetch('/api/dashboard/stats', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
         const data = await response.json()
 
         if (data.success) {
@@ -82,7 +88,7 @@ const DashboardPage: React.FC = () => {
         }
 
       } catch (error) {
-        console.error('Erro ao carregar dados do dashboard:', error)
+        console.error('Erro ao carregar dados da visão geral:', error)
         // Keep default values (0) on error
       } finally {
         setLoading(false)
@@ -136,7 +142,12 @@ const DashboardPage: React.FC = () => {
   useEffect(() => {
     const fetchPerformanceData = async () => {
       try {
-        const response = await fetch('http://localhost:3008/api/turmas')
+        const token = localStorage.getItem('token')
+        const response = await fetch('/api/turmas', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
         const data = await response.json()
 
         if (data.success) {
@@ -195,7 +206,7 @@ const DashboardPage: React.FC = () => {
             Olá, {user?.nome}! 👋
           </h1>
           <p className="text-gray-600">
-            Bem-vindo ao painel administrativo do Horizonte do Saber
+            Bem-vindo à visão geral do Horizonte do Saber
           </p>
         </motion.div>
       </div>

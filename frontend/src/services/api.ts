@@ -3,7 +3,7 @@ import toast from 'react-hot-toast'
 
 // Create axios instance
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3008/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4600/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -11,7 +11,7 @@ export const api = axios.create({
 })
 
 // Debug log para verificar a URL sendo usada
-console.log('🔗 API Base URL:', import.meta.env.VITE_API_URL || 'http://localhost:3008/api')
+console.log('🔗 API Base URL:', import.meta.env.VITE_API_URL || 'http://localhost:4600/api')
 
 // Request interceptor
 api.interceptors.request.use(

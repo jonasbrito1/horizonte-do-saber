@@ -94,47 +94,22 @@ const UsersPage: React.FC = () => {
     enviarEmail: true
   })
 
-  // Dados mockados para demonstração
-  const mockUsers: User[] = [
-    {
-      id: 1,
-      nome: 'João Silva',
-      email: 'joao@exemplo.com',
-      telefone: '(11) 99999-9999',
-      tipo: 'admin',
-      status: 'ativo',
-      created_at: '2024-01-15T10:00:00Z',
-      ultimo_login: '2024-09-26T08:30:00Z',
-      primeiro_login: false
-    },
-    {
-      id: 2,
-      nome: 'Maria Santos',
-      email: 'maria@exemplo.com',
-      telefone: '(11) 88888-8888',
-      tipo: 'professor',
-      status: 'ativo',
-      created_at: '2024-02-20T14:30:00Z',
-      ultimo_login: '2024-09-25T16:45:00Z',
-      primeiro_login: false
-    },
-    {
-      id: 3,
-      nome: 'Pedro Oliveira',
-      email: 'pedro@exemplo.com',
-      tipo: 'responsavel',
-      status: 'ativo',
-      created_at: '2024-03-10T09:15:00Z',
-      primeiro_login: true
+  // Carregar usuários reais da API
+  const loadUsers = async () => {
+    try {
+      setLoading(true)
+      const realUsers = await userService.getUsers()
+      setUsers(realUsers)
+    } catch (error) {
+      console.error('Erro ao carregar usuários:', error)
+      toast.error('Erro ao carregar usuários')
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
 
   useEffect(() => {
-    // Simular carregamento de dados
-    setTimeout(() => {
-      setUsers(mockUsers)
-      setLoading(false)
-    }, 1000)
+    loadUsers()
   }, [])
 
   const getTypeColor = (tipo: string) => {
@@ -441,26 +416,24 @@ const UsersPage: React.FC = () => {
     setIsEditing(true)
 
     try {
-      // Simular update com dados mock (a API real seria implementada aqui)
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // Atualizar usuário na lista local
-      const updatedUser: User = {
-        ...selectedUser,
+      // Atualizar usuário via API
+      await userService.updateUser(selectedUser.id, {
         nome: formData.nome,
         email: formData.email,
-        telefone: formData.telefone || undefined,
+        telefone: formData.telefone,
         tipo: formData.tipo
-      }
+      })
 
-      setUsers(prev => prev.map(u => u.id === selectedUser.id ? updatedUser : u))
+      toast.success('Usuário atualizado com sucesso!')
 
-      toast.success('Usuário editado com sucesso!')
+      // Recarregar dados da API
+      await loadUsers()
+
       setShowEditModal(false)
       setSelectedUser(null)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao editar usuário:', error)
-      toast.error('Erro ao editar usuário')
+      toast.error(error.message || 'Erro ao editar usuário')
     } finally {
       setIsEditing(false)
     }
@@ -518,28 +491,25 @@ const UsersPage: React.FC = () => {
     setIsResettingPassword(true)
 
     try {
-      // Tentar usar a API real primeiro
-      try {
-        const result = await userService.resetUserPassword(selectedUser.id)
+      const result = await userService.resetUserPassword(selectedUser.id)
 
-        const successMessage = resetPasswordData.enviarEmail
-          ? 'Senha resetada com sucesso! Email enviado ao usuário.'
-          : `Senha resetada com sucesso! Nova senha: ${result.novaSenha}`
-
-        toast.success(successMessage)
-      } catch (apiError) {
-        // Fallback para simulação mock se a API falhar
-        await new Promise(resolve => setTimeout(resolve, 1000))
-
-        const novaSenha = resetPasswordData.gerarSenhaAutomatica
-          ? 'NewPass' + Math.random().toString(36).substring(2, 8) + '!'
-          : resetPasswordData.novaSenha
-
-        const successMessage = resetPasswordData.enviarEmail
-          ? `Senha resetada com sucesso! Email seria enviado para ${selectedUser.email} com nova senha: ${novaSenha}`
-          : `Senha resetada com sucesso! Nova senha: ${novaSenha}`
-
-        toast.success(successMessage)
+      // Verificar se o email foi enviado com sucesso
+      if (resetPasswordData.enviarEmail) {
+        if (result.emailEnviado) {
+          toast.success('Senha resetada com sucesso! Email enviado ao usuário.')
+        } else {
+          // Senha foi resetada mas email falhou
+          toast.success(
+            `Senha resetada com sucesso! Nova senha: ${result.novaSenha}`,
+            { duration: 8000 }
+          )
+          toast.error(
+            `Atenção: Email não pôde ser enviado. ${result.emailError || 'Verifique as configurações de email do servidor.'}`,
+            { duration: 10000 }
+          )
+        }
+      } else {
+        toast.success(`Senha resetada com sucesso! Nova senha: ${result.novaSenha}`)
       }
 
       setShowResetPasswordModal(false)
@@ -550,9 +520,9 @@ const UsersPage: React.FC = () => {
         confirmarSenha: '',
         enviarEmail: true
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao resetar senha:', error)
-      toast.error('Erro ao resetar senha')
+      toast.error(error.message || 'Erro ao resetar senha')
     } finally {
       setIsResettingPassword(false)
     }

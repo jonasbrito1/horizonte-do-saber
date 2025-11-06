@@ -119,7 +119,7 @@ export const alunoService = {
     return data.data;
   },
 
-  async createAluno(alunoData: Omit<Aluno, 'id' | 'created_at' | 'updated_at'>): Promise<Aluno> {
+  async createAluno(alunoData: Omit<Aluno, 'id' | 'created_at' | 'updated_at'>): Promise<Aluno & { usuarioCriado?: boolean; senhaGerada?: string }> {
     const response = await fetch(`${API_BASE_URL}/alunos`, {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -132,7 +132,12 @@ export const alunoService = {
     }
 
     const data = await response.json();
-    return data.data;
+    // Retorna o aluno completo com os campos extras usuarioCriado e senhaGerada
+    return {
+      ...data.data,
+      usuarioCriado: data.usuarioCriado,
+      senhaGerada: data.senhaGerada
+    };
   },
 
   async updateAluno(id: number, alunoData: Partial<Aluno>): Promise<Aluno> {
@@ -149,6 +154,18 @@ export const alunoService = {
 
     const data = await response.json();
     return data.data;
+  },
+
+  async deleteAluno(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/alunos/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Erro ao excluir aluno');
+    }
   },
 };
 

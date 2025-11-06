@@ -12,6 +12,7 @@ interface User {
   data_nascimento?: string;
   tipo: 'admin' | 'professor' | 'responsavel';
   status: 'ativo' | 'inativo' | 'suspenso';
+  foto_perfil?: string;
   created_at: string;
   primeiro_login: boolean;
   ultimo_login?: string;
@@ -198,18 +199,72 @@ class UserDbService {
       return null;
     }
 
-    // Atualizar último login
+    // Atualizar último login (mas não alterar primeiro_login aqui)
     const users = await this.loadUsers();
     const userIndex = users.findIndex(u => u.id === user.id);
     if (userIndex !== -1) {
       users[userIndex].ultimo_login = new Date().toISOString();
-      users[userIndex].primeiro_login = false;
       await this.saveUsers(users);
+      // Retornar usuário atualizado
+      user.ultimo_login = users[userIndex].ultimo_login;
     }
 
     // Retornar usuário sem senha
     const { senha: _, ...userWithoutPassword } = user;
     return userWithoutPassword as User;
+  }
+
+  async changePassword(userId: number, oldPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    const users = await this.loadUsers();
+    const userIndex = users.findIndex(u => u.id === userId);
+
+    if (userIndex === -1) {
+      return { success: false, message: 'Usuário não encontrado' };
+    }
+
+    const user = users[userIndex];
+
+    // Verificar senha antiga
+    const isValidOldPassword = await bcrypt.compare(oldPassword, user.senha);
+    if (!isValidOldPassword) {
+      return { success: false, message: 'Senha antiga incorreta' };
+    }
+
+    // Atualizar senha
+    user.senha = await bcrypt.hash(newPassword, 12);
+
+    // Marcar primeiro_login como false apenas ao trocar senha
+    user.primeiro_login = false;
+
+    await this.saveUsers(users);
+
+    return { success: true, message: 'Senha alterada com sucesso' };
+  }
+
+  async changePasswordFirstAccess(userId: number, newPassword: string): Promise<{ success: boolean; message: string }> {
+    const users = await this.loadUsers();
+    const userIndex = users.findIndex(u => u.id === userId);
+
+    if (userIndex === -1) {
+      return { success: false, message: 'Usuário não encontrado' };
+    }
+
+    const user = users[userIndex];
+
+    // Verificar se é primeiro acesso
+    if (!user.primeiro_login) {
+      return { success: false, message: 'Esta função é apenas para primeiro acesso' };
+    }
+
+    // Atualizar senha
+    user.senha = await bcrypt.hash(newPassword, 12);
+
+    // Marcar primeiro_login como false
+    user.primeiro_login = false;
+
+    await this.saveUsers(users);
+
+    return { success: true, message: 'Senha definida com sucesso' };
   }
 
   private generateRandomPassword(): string {

@@ -15,11 +15,13 @@ import {
   Mail,
   Phone,
   Calendar,
-  MapPin
+  MapPin,
+  UserX
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { alunoService, turmaService, responsavelService, type Aluno, type Turma } from '../../services/alunoService'
 import { normalizeTurmaName, SERIES_SUGESTOES } from '../../utils/ordinalNumbers'
+import StudentFormModal from './StudentFormModal'
 
 const StudentsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -27,6 +29,7 @@ const StudentsPage: React.FC = () => {
   const [turmaFilter, setTurmaFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [showNewStudentModal, setShowNewStudentModal] = useState(false)
+  const [showEditStudentModal, setShowEditStudentModal] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Aluno | null>(null)
   const [showStudentModal, setShowStudentModal] = useState(false)
   const [students, setStudents] = useState<Aluno[]>([])
@@ -35,30 +38,30 @@ const StudentsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
 
   // Load data from API
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-        const [studentsData, turmasData] = await Promise.all([
-          alunoService.getAllAlunos(),
-          turmaService.getAllTurmas()
-        ])
+      const [studentsData, turmasData] = await Promise.all([
+        alunoService.getAllAlunos(),
+        turmaService.getAllTurmas()
+      ])
 
-        setStudents(studentsData)
-        setTurmas(turmasData)
-      } catch (err) {
-        console.error('Erro ao carregar dados:', err)
-        setError('Erro ao carregar dados. Usando dados mock para demonstração.')
-        // Em caso de erro, usar alguns dados básicos mock para demonstração
-        setStudents([])
-        setTurmas([])
-      } finally {
-        setLoading(false)
-      }
+      setStudents(studentsData)
+      setTurmas(turmasData)
+    } catch (err) {
+      console.error('Erro ao carregar dados:', err)
+      setError('Erro ao carregar dados. Usando dados mock para demonstração.')
+      // Em caso de erro, usar alguns dados básicos mock para demonstração
+      setStudents([])
+      setTurmas([])
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     loadData()
   }, [])
 
@@ -112,10 +115,29 @@ const StudentsPage: React.FC = () => {
     setCurrentPage(1)
   }
 
-  const handleDeleteStudent = (student: Aluno) => {
-    if (window.confirm(`Tem certeza que deseja inativar o aluno ${student.nome}?`)) {
-      // In real app, this would call the API to update status
-      toast.success('Aluno inativado com sucesso')
+  const handleInactivateStudent = async (student: Aluno) => {
+    if (window.confirm(`Tem certeza que deseja inativar o aluno ${student.nome}?\n\nO aluno será marcado como inativo mas seus dados serão mantidos no sistema.`)) {
+      try {
+        await alunoService.updateAluno(student.id, { status: 'inativo' })
+        toast.success('Aluno inativado com sucesso')
+        await loadData()
+      } catch (error: any) {
+        console.error('Erro ao inativar aluno:', error)
+        toast.error(error.message || 'Erro ao inativar aluno')
+      }
+    }
+  }
+
+  const handleDeleteStudent = async (student: Aluno) => {
+    if (window.confirm(`⚠️ ATENÇÃO: Tem certeza que deseja EXCLUIR PERMANENTEMENTE o aluno ${student.nome}?\n\nEsta ação NÃO PODE ser desfeita! Todos os dados do aluno serão removidos do sistema.\n\nClique em OK para confirmar a exclusão.`)) {
+      try {
+        await alunoService.deleteAluno(student.id)
+        toast.success('Aluno excluído permanentemente')
+        await loadData()
+      } catch (error: any) {
+        console.error('Erro ao excluir aluno:', error)
+        toast.error(error.message || 'Erro ao excluir aluno')
+      }
     }
   }
 
@@ -326,13 +348,13 @@ const StudentsPage: React.FC = () => {
                       Aluno
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Matrícula
+                      Matrícula / CPF
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Turma
+                      Turma / Série
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Responsável
+                      Contato
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
@@ -349,9 +371,15 @@ const StudentsPage: React.FC = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: index * 0.05 }}
-                      className="hover:bg-gray-50 transition-colors"
+                      className="hover:bg-gray-50 transition-colors cursor-pointer"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td
+                        className="px-6 py-4 whitespace-nowrap"
+                        onClick={() => {
+                          setSelectedStudent(student)
+                          setShowStudentModal(true)
+                        }}
+                      >
                         <div className="flex items-center">
                           <div className="h-10 w-10 flex-shrink-0">
                             <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
@@ -362,50 +390,70 @@ const StudentsPage: React.FC = () => {
                             <div className="text-sm font-medium text-gray-900">{student.nome}</div>
                             <div className="text-sm text-gray-500">
                               {calculateAge(student.data_nascimento)} anos
-                              {student.email && (
-                                <span className="ml-2 flex items-center">
-                                  <Mail className="w-3 h-3 mr-1" />
-                                  {student.email}
-                                </span>
-                              )}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{student.matricula}</div>
+                      <td
+                        className="px-6 py-4 whitespace-nowrap"
+                        onClick={() => {
+                          setSelectedStudent(student)
+                          setShowStudentModal(true)
+                        }}
+                      >
+                        <div className="text-sm text-gray-900 font-medium">{student.numero_matricula || student.matricula}</div>
+                        {student.cpf && (
+                          <div className="text-sm text-gray-500">
+                            CPF: {student.cpf}
+                          </div>
+                        )}
+                      </td>
+                      <td
+                        className="px-6 py-4 whitespace-nowrap"
+                        onClick={() => {
+                          setSelectedStudent(student)
+                          setShowStudentModal(true)
+                        }}
+                      >
+                        <div className="text-sm font-medium text-gray-900">
+                          {student.serie_atual ? normalizeTurmaName(student.serie_atual) : 'Não definida'}
+                        </div>
                         <div className="text-sm text-gray-500">
-                          {new Date(student.created_at).toLocaleDateString('pt-BR')}
+                          {student.turno ? student.turno.charAt(0).toUpperCase() + student.turno.slice(1) : 'Sem turno'}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {student.turma_id ? (
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {normalizeTurmaName(turmas.find(t => t.id === student.turma_id)?.nome || 'N/A')}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {normalizeTurmaName(turmas.find(t => t.id === student.turma_id)?.serie || '')}
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-500">Sem turma</span>
-                        )}
+                      <td
+                        className="px-6 py-4 whitespace-nowrap"
+                        onClick={() => {
+                          setSelectedStudent(student)
+                          setShowStudentModal(true)
+                        }}
+                      >
+                        <div>
+                          {student.telefone_responsavel ? (
+                            <>
+                              <div className="text-sm font-medium text-gray-900 flex items-center">
+                                <Phone className="w-3 h-3 mr-1" />
+                                {student.telefone_responsavel}
+                              </div>
+                              {(student.nome_mae || student.nome_pai) && (
+                                <div className="text-sm text-gray-500">
+                                  {student.nome_mae || student.nome_pai}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-sm text-gray-500">Sem contato</span>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {student.responsavel_id ? (
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">Responsável ID: {student.responsavel_id}</div>
-                            <div className="text-sm text-gray-500 flex items-center">
-                              <Phone className="w-3 h-3 mr-1" />
-                              {student.telefone || 'N/A'}
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-500">Sem responsável</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td
+                        className="px-6 py-4 whitespace-nowrap"
+                        onClick={() => {
+                          setSelectedStudent(student)
+                          setShowStudentModal(true)
+                        }}
+                      >
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(student.status)}`}>
                           {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
                         </span>
@@ -413,27 +461,46 @@ const StudentsPage: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-2">
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation()
                               setSelectedStudent(student)
                               setShowStudentModal(true)
                             }}
-                            className="text-blue-600 hover:text-blue-900 transition-colors"
+                            className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all duration-200 transform hover:scale-110"
                             title="Ver detalhes"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-5 h-5" />
                           </button>
                           <button
-                            className="text-green-600 hover:text-green-900 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedStudent(student)
+                              setShowEditStudentModal(true)
+                            }}
+                            className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700 transition-all duration-200 transform hover:scale-110"
                             title="Editar"
                           >
-                            <Edit className="w-4 h-4" />
+                            <Edit className="w-5 h-5" />
                           </button>
                           <button
-                            onClick={() => handleDeleteStudent(student)}
-                            className="text-red-600 hover:text-red-900 transition-colors"
-                            title="Inativar"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleInactivateStudent(student)
+                            }}
+                            className="p-2 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 transition-all duration-200 transform hover:scale-110"
+                            title="Inativar (desativar aluno)"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <UserX className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteStudent(student)
+                            }}
+                            className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-all duration-200 transform hover:scale-110"
+                            title="Excluir permanentemente"
+                          >
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         </div>
                       </td>
@@ -518,99 +585,263 @@ const StudentsPage: React.FC = () => {
       {/* Student Detail Modal */}
       {showStudentModal && selectedStudent && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
             <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowStudentModal(false)} />
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="flex justify-between items-start mb-6">
-                  <h3 className="text-lg font-medium text-gray-900">Detalhes do Aluno</h3>
-                  <button
-                    onClick={() => setShowStudentModal(false)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    ×
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Foto e informações básicas */}
-                  <div className="text-center">
-                    <div className="h-32 w-32 rounded-full bg-primary-100 flex items-center justify-center mx-auto">
-                      <Users className="h-16 w-16 text-primary-600" />
-                    </div>
-                    <h4 className="mt-4 text-xl font-semibold text-gray-900">{selectedStudent.nome}</h4>
-                    <p className="text-gray-600">Matrícula: {selectedStudent.matricula}</p>
-                    <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full mt-2 ${getStatusColor(selectedStudent.status)}`}>
-                      {selectedStudent.status.charAt(0).toUpperCase() + selectedStudent.status.slice(1)}
-                    </span>
-                  </div>
-                  
-                  {/* Informações pessoais */}
-                  <div>
-                    <h5 className="text-lg font-medium text-gray-900 mb-4">Informações Pessoais</h5>
-                    <div className="space-y-3 text-sm">
-                      <div className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                        <span className="text-gray-600">Idade:</span>
-                        <span className="ml-1 font-medium">{calculateAge(selectedStudent.data_nascimento)} anos</span>
-                      </div>
-                      {selectedStudent.email && (
-                        <div className="flex items-center">
-                          <Mail className="w-4 h-4 mr-2 text-gray-400" />
-                          <span className="text-gray-600">Email:</span>
-                          <span className="ml-1">{selectedStudent.email}</span>
-                        </div>
-                      )}
-                      {selectedStudent.telefone && (
-                        <div className="flex items-center">
-                          <Phone className="w-4 h-4 mr-2 text-gray-400" />
-                          <span className="text-gray-600">Telefone:</span>
-                          <span className="ml-1">{selectedStudent.telefone}</span>
-                        </div>
-                      )}
-                      {selectedStudent.endereco && (
-                        <div className="flex items-start">
-                          <MapPin className="w-4 h-4 mr-2 text-gray-400 mt-0.5" />
-                          <div>
-                            <span className="text-gray-600">Endereço:</span>
-                            <p className="ml-1">{selectedStudent.endereco}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Responsáveis */}
-                  <div>
-                    <h5 className="text-lg font-medium text-gray-900 mb-4">Responsável</h5>
-                    <div className="space-y-3">
-                      {selectedStudent.responsavel_id ? (
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <div className="text-sm font-medium text-gray-900">ID: {selectedStudent.responsavel_id}</div>
-                          <div className="text-xs text-gray-600 mt-1">Responsável Principal</div>
-                          {selectedStudent.telefone && (
-                            <div className="flex items-center mt-2 text-xs text-gray-600">
-                              <Phone className="w-3 h-3 mr-1" />
-                              {selectedStudent.telefone}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-sm text-gray-500">Sem responsável cadastrado</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <div className="relative bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+              {/* Header */}
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+                <h3 className="text-2xl font-bold text-gray-900">Detalhes Completos do Aluno</h3>
                 <button
                   onClick={() => setShowStudentModal(false)}
-                  className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="px-6 py-6 space-y-8">
+                {/* Seção 1: Identificação */}
+                <div className="bg-blue-50 p-6 rounded-lg">
+                  <h4 className="text-lg font-semibold text-blue-900 mb-4 flex items-center">
+                    <Users className="w-5 h-5 mr-2" />
+                    Identificação
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Nome Completo</label>
+                      <p className="text-gray-900 font-medium">{selectedStudent.nome || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Matrícula</label>
+                      <p className="text-gray-900 font-medium">{selectedStudent.numero_matricula || selectedStudent.matricula || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Data de Nascimento</label>
+                      <p className="text-gray-900">{selectedStudent.data_nascimento ? new Date(selectedStudent.data_nascimento).toLocaleDateString('pt-BR') : '-'} ({calculateAge(selectedStudent.data_nascimento)} anos)</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">CPF</label>
+                      <p className="text-gray-900">{selectedStudent.cpf || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">RG</label>
+                      <p className="text-gray-900">{selectedStudent.rg || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Status</label>
+                      <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedStudent.status)}`}>
+                        {selectedStudent.status?.charAt(0).toUpperCase() + selectedStudent.status?.slice(1)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seção 2: Endereço */}
+                <div className="bg-green-50 p-6 rounded-lg">
+                  <h4 className="text-lg font-semibold text-green-900 mb-4 flex items-center">
+                    <MapPin className="w-5 h-5 mr-2" />
+                    Endereço
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Rua</label>
+                      <p className="text-gray-900">{selectedStudent.endereco_rua || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Número</label>
+                      <p className="text-gray-900">{selectedStudent.endereco_numero || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Bairro</label>
+                      <p className="text-gray-900">{selectedStudent.endereco_bairro || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Cidade</label>
+                      <p className="text-gray-900">{selectedStudent.endereco_cidade || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Estado</label>
+                      <p className="text-gray-900">{selectedStudent.endereco_estado || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">CEP</label>
+                      <p className="text-gray-900">{selectedStudent.endereco_cep || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seção 3: Responsáveis */}
+                <div className="bg-purple-50 p-6 rounded-lg">
+                  <h4 className="text-lg font-semibold text-purple-900 mb-4 flex items-center">
+                    <Phone className="w-5 h-5 mr-2" />
+                    Responsáveis e Contatos
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Nome da Mãe</label>
+                      <p className="text-gray-900">{selectedStudent.nome_mae || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Telefone da Mãe</label>
+                      <p className="text-gray-900">{selectedStudent.telefone_mae || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Nome do Pai</label>
+                      <p className="text-gray-900">{selectedStudent.nome_pai || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Telefone Responsável</label>
+                      <p className="text-gray-900">{selectedStudent.telefone_responsavel || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Email Responsável</label>
+                      <p className="text-gray-900">{selectedStudent.email_responsavel || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Outro Contato</label>
+                      <p className="text-gray-900">{selectedStudent.nome_outro_contato || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Telefone Outro</label>
+                      <p className="text-gray-900">{selectedStudent.telefone_outro || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Telefone Emergência</label>
+                      <p className="text-gray-900 font-semibold text-red-600">{selectedStudent.telefone_emergencia || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Mora Com</label>
+                      <p className="text-gray-900">{selectedStudent.mora_com || '-'}</p>
+                    </div>
+                    {selectedStudent.mora_com === 'outros' && selectedStudent.mora_com_outros_desc && (
+                      <div className="md:col-span-3">
+                        <label className="text-sm font-medium text-gray-600">Descrição de com quem mora</label>
+                        <p className="text-gray-900">{selectedStudent.mora_com_outros_desc}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Seção 4: Informações de Saúde */}
+                <div className="bg-red-50 p-6 rounded-lg">
+                  <h4 className="text-lg font-semibold text-red-900 mb-4 flex items-center">
+                    <Calendar className="w-5 h-5 mr-2" />
+                    Informações de Saúde
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Tipo Sanguíneo</label>
+                      <p className="text-gray-900">{selectedStudent.tipo_sanguineo || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Alergias</label>
+                      <p className="text-gray-900">{selectedStudent.alergias || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Restrição Alimentar</label>
+                      <p className="text-gray-900">{selectedStudent.restricao_alimentar || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Restrição Remédio</label>
+                      <p className="text-gray-900">{selectedStudent.restricao_remedio || '-'}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-sm font-medium text-gray-600">Remédio de Uso Contínuo</label>
+                      <p className="text-gray-900">{selectedStudent.remedio_uso_continuo || '-'}</p>
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="text-sm font-medium text-gray-600">Doença Grave / Histórico</label>
+                      <p className="text-gray-900">{selectedStudent.doenca_grave || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seção 5: Informações Acadêmicas */}
+                <div className="bg-yellow-50 p-6 rounded-lg">
+                  <h4 className="text-lg font-semibold text-yellow-900 mb-4 flex items-center">
+                    <Calendar className="w-5 h-5 mr-2" />
+                    Informações Acadêmicas
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Série Atual</label>
+                      <p className="text-gray-900">{selectedStudent.serie_atual ? normalizeTurmaName(selectedStudent.serie_atual) : '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Turno</label>
+                      <p className="text-gray-900">{selectedStudent.turno ? selectedStudent.turno.charAt(0).toUpperCase() + selectedStudent.turno.slice(1) : '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Data Matrícula</label>
+                      <p className="text-gray-900">{selectedStudent.data_matricula ? new Date(selectedStudent.data_matricula).toLocaleDateString('pt-BR') : '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seção 6: Informações Sociais */}
+                <div className="bg-indigo-50 p-6 rounded-lg">
+                  <h4 className="text-lg font-semibold text-indigo-900 mb-4 flex items-center">
+                    <Calendar className="w-5 h-5 mr-2" />
+                    Informações Sociais
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Possui Condução</label>
+                      <p className="text-gray-900">{selectedStudent.possui_conducao ? 'Sim' : 'Não'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Religião</label>
+                      <p className="text-gray-900">{selectedStudent.religiao || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Recebe Bolsa Família</label>
+                      <p className="text-gray-900">{selectedStudent.recebe_bolsa_familia ? 'Sim' : 'Não'}</p>
+                    </div>
+                    {selectedStudent.recebe_bolsa_familia && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Número NIS</label>
+                        <p className="text-gray-900">{selectedStudent.numero_nis || '-'}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Seção 7: Observações */}
+                {(selectedStudent.observacoes || selectedStudent.informacoes_adicionais) && (
+                  <div className="bg-gray-50 p-6 rounded-lg">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Observações e Informações Adicionais</h4>
+                    {selectedStudent.observacoes && (
+                      <div className="mb-4">
+                        <label className="text-sm font-medium text-gray-600">Observações</label>
+                        <p className="text-gray-900 whitespace-pre-wrap">{selectedStudent.observacoes}</p>
+                      </div>
+                    )}
+                    {selectedStudent.informacoes_adicionais && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Informações Adicionais</label>
+                        <p className="text-gray-900 whitespace-pre-wrap">{selectedStudent.informacoes_adicionais}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowStudentModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                 >
                   Fechar
                 </button>
-                <button className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 sm:ml-3 sm:w-auto sm:text-sm">
+                <button
+                  onClick={() => {
+                    setShowStudentModal(false)
+                    setShowEditStudentModal(true)
+                  }}
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
+                >
                   Editar
                 </button>
               </div>
@@ -619,323 +850,24 @@ const StudentsPage: React.FC = () => {
         </div>
       )}
 
-      {/* New Student Modal */}
-      {showNewStudentModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowNewStudentModal(false)} />
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <form onSubmit={async (e) => {
-                e.preventDefault()
-                const formData = new FormData(e.currentTarget)
+      {/* New/Edit Student Modal */}
+      <StudentFormModal
+        isOpen={showNewStudentModal}
+        onClose={() => setShowNewStudentModal(false)}
+        onSuccess={loadData}
+        turmas={turmas}
+      />
 
-                try {
-                  // 1. Primeiro criar o responsável
-                  const responsavelData = {
-                    nome: formData.get('responsavel_nome') as string,
-                    email: formData.get('responsavel_email') as string,
-                    telefone: formData.get('responsavel_telefone') as string,
-                    cpf: formData.get('responsavel_cpf') as string,
-                    endereco: formData.get('responsavel_endereco') as string,
-                    parentesco: formData.get('responsavel_parentesco') as 'pai' | 'mae' | 'avo' | 'ava' | 'tio' | 'tia' | 'outro',
-                    eh_principal: Boolean(formData.get('responsavel_principal')),
-                    observacoes: formData.get('responsavel_observacoes') as string
-                  }
-
-                  const responsavelResult = await responsavelService.createResponsavel(responsavelData)
-
-                  // 2. Depois criar o aluno vinculado ao responsável
-                  const alunoData = {
-                    nome: formData.get('nome') as string,
-                    data_nascimento: formData.get('data_nascimento') as string,
-                    matricula: formData.get('matricula') as string,
-                    email: formData.get('email') as string,
-                    telefone: formData.get('telefone') as string,
-                    endereco: formData.get('endereco') as string,
-                    cpf: formData.get('cpf') as string,
-                    turma_id: formData.get('turma_id') ? Number(formData.get('turma_id')) : undefined,
-                    responsavel_id: responsavelResult.id, // Vincular ao responsável criado
-                    status: 'ativo' as const,
-                    observacoes: formData.get('observacoes') as string
-                  }
-
-                  await alunoService.createAluno(alunoData)
-
-                  // Mostrar mensagem apropriada baseada na criação do usuário
-                  let successMessage = 'Aluno e responsável cadastrados com sucesso!'
-                  if (responsavelResult.usuarioCriado) {
-                    successMessage += ` Usuário criado automaticamente para o responsável.`
-                    if (responsavelResult.senhaGerada) {
-                      successMessage += ` Senha de acesso: ${responsavelResult.senhaGerada}`
-                    }
-                  }
-
-                  toast.success(successMessage, { duration: 8000 })
-                  setShowNewStudentModal(false)
-
-                  // 3. Recarregar dados
-                  const [studentsData, turmasData] = await Promise.all([
-                    alunoService.getAllAlunos(),
-                    turmaService.getAllTurmas()
-                  ])
-                  setStudents(studentsData)
-                  setTurmas(turmasData)
-                } catch (error: any) {
-                  toast.error(error.message || 'Erro ao cadastrar aluno e responsável')
-                }
-              }}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="flex justify-between items-start mb-6">
-                    <h3 className="text-lg font-medium text-gray-900">Cadastrar Novo Aluno</h3>
-                    <button
-                      type="button"
-                      onClick={() => setShowNewStudentModal(false)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      ×
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {/* Nome */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
-                      <input
-                        type="text"
-                        name="nome"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="Digite o nome completo do aluno"
-                      />
-                    </div>
-
-                    {/* Data de Nascimento */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Data de Nascimento *</label>
-                      <input
-                        type="date"
-                        name="data_nascimento"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    {/* Matrícula */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Matrícula *</label>
-                      <input
-                        type="text"
-                        name="matricula"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="Ex: ALU001"
-                      />
-                    </div>
-
-                    {/* Email */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                      <input
-                        type="email"
-                        name="email"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="email@exemplo.com"
-                      />
-                    </div>
-
-                    {/* Telefone */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-                      <input
-                        type="tel"
-                        name="telefone"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="(11) 99999-9999"
-                      />
-                    </div>
-
-                    {/* CPF */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
-                      <input
-                        type="text"
-                        name="cpf"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="000.000.000-00"
-                      />
-                    </div>
-
-                    {/* Endereço */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
-                      <input
-                        type="text"
-                        name="endereco"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="Rua, número, bairro"
-                      />
-                    </div>
-
-                    {/* Turma */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Turma</label>
-                      <select
-                        name="turma_id"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      >
-                        <option value="">Selecione uma turma</option>
-                        {turmas.map((turma) => (
-                          <option key={turma.id} value={turma.id}>
-                            {normalizeTurmaName(turma.nome)} - {normalizeTurmaName(turma.serie)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Divisor - Dados do Responsável */}
-                    <div className="border-t border-gray-200 pt-4">
-                      <h4 className="text-md font-medium text-gray-900 mb-4">📞 Dados do Responsável</h4>
-                    </div>
-
-                    {/* Nome do Responsável */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Responsável *</label>
-                      <input
-                        type="text"
-                        name="responsavel_nome"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="Nome completo do responsável"
-                      />
-                    </div>
-
-                    {/* Email do Responsável */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email do Responsável</label>
-                      <input
-                        type="email"
-                        name="responsavel_email"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="email@exemplo.com"
-                      />
-                    </div>
-
-                    {/* Telefone do Responsável */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Telefone do Responsável *</label>
-                      <input
-                        type="tel"
-                        name="responsavel_telefone"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="(11) 99999-9999"
-                      />
-                    </div>
-
-                    {/* CPF do Responsável */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">CPF do Responsável</label>
-                      <input
-                        type="text"
-                        name="responsavel_cpf"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="000.000.000-00"
-                      />
-                    </div>
-
-                    {/* Endereço do Responsável */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Endereço do Responsável</label>
-                      <input
-                        type="text"
-                        name="responsavel_endereco"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="Rua, número, bairro, cidade"
-                      />
-                    </div>
-
-                    {/* Parentesco */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Parentesco *</label>
-                      <select
-                        name="responsavel_parentesco"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      >
-                        <option value="">Selecione o parentesco</option>
-                        <option value="pai">Pai</option>
-                        <option value="mae">Mãe</option>
-                        <option value="avo">Avô</option>
-                        <option value="ava">Avó</option>
-                        <option value="tio">Tio</option>
-                        <option value="tia">Tia</option>
-                        <option value="outro">Outro</option>
-                      </select>
-                    </div>
-
-                    {/* Responsável Principal */}
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="responsavel_principal"
-                        id="responsavel_principal"
-                        defaultChecked
-                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="responsavel_principal" className="ml-2 block text-sm text-gray-700">
-                        Este é o responsável principal
-                      </label>
-                    </div>
-
-                    {/* Observações do Responsável */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Observações sobre o Responsável</label>
-                      <textarea
-                        name="responsavel_observacoes"
-                        rows={2}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="Observações sobre o responsável"
-                      />
-                    </div>
-
-                    {/* Divisor - Observações do Aluno */}
-                    <div className="border-t border-gray-200 pt-4">
-                      <h4 className="text-md font-medium text-gray-900 mb-4">📝 Observações do Aluno</h4>
-                    </div>
-
-                    {/* Observações */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
-                      <textarea
-                        name="observacoes"
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="Observações adicionais sobre o aluno"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                  <button
-                    type="submit"
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 sm:ml-3 sm:w-auto sm:text-sm"
-                  >
-                    Cadastrar Aluno
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowNewStudentModal(false)}
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+      <StudentFormModal
+        isOpen={showEditStudentModal}
+        onClose={() => {
+          setShowEditStudentModal(false)
+          setSelectedStudent(null)
+        }}
+        onSuccess={loadData}
+        turmas={turmas}
+        student={selectedStudent}
+      />
     </div>
   )
 }

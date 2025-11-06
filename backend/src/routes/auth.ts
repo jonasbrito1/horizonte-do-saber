@@ -62,4 +62,29 @@ router.post(
 // @access  Private
 router.get('/me', authController.getMe);
 
+// @route   POST /api/auth/change-password
+// @desc    Change password (requires old password)
+// @access  Private
+router.post(
+  '/change-password',
+  [
+    body('senhaAtual').notEmpty().withMessage('Senha atual é obrigatória'),
+    body('novaSenha').isLength({ min: 6 }).withMessage('Nova senha deve ter pelo menos 6 caracteres'),
+  ],
+  validate,
+  authController.changePassword
+);
+
+// @route   POST /api/auth/change-password-first-access
+// @desc    Change password on first access (no old password required)
+// @access  Private
+router.post(
+  '/change-password-first-access',
+  [
+    body('novaSenha').isLength({ min: 6 }).withMessage('Nova senha deve ter pelo menos 6 caracteres'),
+  ],
+  validate,
+  authController.changePasswordFirstAccess
+);
+
 export default router;

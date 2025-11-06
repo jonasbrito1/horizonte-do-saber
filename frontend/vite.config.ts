@@ -12,14 +12,15 @@ export default defineConfig({
   },
   server: {
     host: true,
+    port: 5176,
     proxy: {
       '/api': {
-        target: 'http://localhost:3009',
+        target: 'http://localhost:4600',
         changeOrigin: true,
         secure: false,
       },
       '/uploads': {
-        target: 'http://localhost:3009',
+        target: 'http://localhost:4600',
         changeOrigin: true,
         secure: false,
       },
